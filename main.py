@@ -42,7 +42,7 @@ def generate_linkedin_post(paper_info):
     """Dùng Gemini AI để viết bài đăng LinkedIn"""
     print("Đang nhờ Gemini AI phân tích và viết bài...")
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.0-pro')
+    model = genai.GenerativeModel('gemini-2.5-flash')
     
     prompt = f"""Bạn là một chuyên gia Data Analyst đang xây dựng thương hiệu cá nhân trên LinkedIn.
 Hãy đọc tóm tắt bài báo khoa học dưới đây và viết một bài đăng LinkedIn bằng tiếng Việt thật chuyên nghiệp, cuốn hút và dễ hiểu.
