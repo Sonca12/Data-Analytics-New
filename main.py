@@ -19,12 +19,12 @@ TEST_MODE = os.getenv("TEST_MODE", "true").lower() == "true"
 
 def fetch_latest_arxiv_paper():
     """Lấy bài báo mới nhất về Data Analytics từ Arxiv"""
-    print("Đang tìm bài báo khoa học mới nhất trên Arxiv...")
+    print("Đang tìm bài báo khoa học mới nhất trên Arxiv...", flush=True)
     query = 'all:data+analytics'
     url = f'http://export.arxiv.org/api/query?search_query={query}&start=0&max_results=1&sortBy=submittedDate&sortOrder=descending'
     
     # Sử dụng requests để tránh lỗi SSL trên Windows
-    response = requests.get(url)
+    response = requests.get(url, timeout=15)
     feed = feedparser.parse(response.content)
     
     if not feed.entries:
@@ -40,7 +40,7 @@ def fetch_latest_arxiv_paper():
 
 def generate_linkedin_post(paper_info):
     """Dùng Gemini AI để viết bài đăng LinkedIn"""
-    print("Đang nhờ Gemini AI phân tích và viết bài...")
+    print("Đang nhờ Gemini AI phân tích và viết bài...", flush=True)
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel('gemini-3.5-flash')
     
@@ -68,10 +68,10 @@ Lưu ý: Chỉ trả về nội dung bài viết, không cần thêm các câu m
 def post_to_linkedin(content):
     """Đăng bài lên LinkedIn qua API"""
     if not LINKEDIN_ACCESS_TOKEN:
-        print("Bỏ qua bước đăng LinkedIn vì thiếu Access Token.")
+        print("Bỏ qua bước đăng LinkedIn vì thiếu Access Token.", flush=True)
         return
 
-    print("Đang kết nối với LinkedIn...")
+    print("Đang kết nối với LinkedIn...", flush=True)
     headers = {
         'Authorization': f'Bearer {LINKEDIN_ACCESS_TOKEN}',
         'X-Restli-Protocol-Version': '2.0.0',
@@ -80,9 +80,9 @@ def post_to_linkedin(content):
     
     try:
         # Lấy thông tin URN của user
-        user_info_resp = requests.get('https://api.linkedin.com/v2/userinfo', headers=headers)
+        user_info_resp = requests.get('https://api.linkedin.com/v2/userinfo', headers=headers, timeout=15)
         if user_info_resp.status_code != 200:
-            print(f"Lỗi khi lấy thông tin user LinkedIn: {user_info_resp.text}")
+            print(f"Lỗi khi lấy thông tin user LinkedIn: {user_info_resp.text}", flush=True)
             return
             
         author_urn = f"urn:li:person:{user_info_resp.json()['sub']}"
@@ -106,16 +106,16 @@ def post_to_linkedin(content):
         }
         
         if not TEST_MODE:
-            post_resp = requests.post(post_url, headers=headers, json=post_data)
+            post_resp = requests.post(post_url, headers=headers, json=post_data, timeout=15)
             if post_resp.status_code == 201:
-                print("Đã đăng bài lên LinkedIn thành công!")
+                print("Đã đăng bài lên LinkedIn thành công!", flush=True)
             else:
-                print(f"Lỗi khi đăng bài: {post_resp.text}")
+                print(f"Lỗi khi đăng bài: {post_resp.text}", flush=True)
         else:
-            print("[TEST MODE] Giả lập đăng bài thành công lên LinkedIn.")
+            print("[TEST MODE] Giả lập đăng bài thành công lên LinkedIn.", flush=True)
             
     except Exception as e:
-        print(f"Lỗi trong quá trình xử lý LinkedIn: {e}")
+        print(f"Lỗi trong quá trình xử lý LinkedIn: {e}", flush=True)
 
 def save_post_to_file(content):
     """Lưu bài viết vào thư mục posts/ để đẩy lên GitHub"""
@@ -125,7 +125,7 @@ def save_post_to_file(content):
     
     with open(filename, "w", encoding="utf-8") as f:
         f.write(content)
-    print(f"Đã lưu bài viết vào file: {filename}")
+    print(f"Đã lưu bài viết vào file: {filename}", flush=True)
 
 def main():
     try:
@@ -134,9 +134,9 @@ def main():
         
         # Bước 2: Nhờ AI viết bài
         post_content = generate_linkedin_post(paper_info)
-        print("\n--- NỘI DUNG BÀI VIẾT TẠO BỞI AI ---\n")
-        print(post_content)
-        print("\n------------------------------------\n")
+        print("\n--- NỘI DUNG BÀI VIẾT TẠO BỞI AI ---\n", flush=True)
+        print(post_content, flush=True)
+        print("\n------------------------------------\n", flush=True)
         
         # Bước 3: Lưu thành file markdown
         save_post_to_file(post_content)
@@ -144,10 +144,10 @@ def main():
         # Bước 4: Đăng lên LinkedIn
         post_to_linkedin(post_content)
         
-        print("Hoàn thành quy trình tự động của ngày hôm nay!")
+        print("Hoàn thành quy trình tự động của ngày hôm nay!", flush=True)
         
     except Exception as e:
-        print(f"Có lỗi xảy ra: {e}")
+        print(f"Có lỗi xảy ra: {e}", flush=True)
         sys.exit(1)
 
 if __name__ == "__main__":
