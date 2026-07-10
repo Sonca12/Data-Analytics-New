@@ -148,6 +148,7 @@ def main():
         
     except Exception as e:
         print(f"Có lỗi xảy ra: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
