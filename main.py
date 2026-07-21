@@ -1,12 +1,13 @@
 import os
 import datetime
 import json
+import html
 import urllib.request
 import feedparser
 import requests
 import google.generativeai as genai
 from dotenv import load_dotenv
-from PIL import Image, ImageDraw, ImageFont
+from playwright.sync_api import sync_playwright
 import sys
 
 # Cấu hình in tiếng Việt trên Windows
@@ -108,121 +109,140 @@ Ví dụ định dạng:
             "output": "Kết quả đầu ra",
         }
 
-def _load_font(size, bold=False):
-    """Tải font chữ có dấu tiếng Việt, ưu tiên font hệ thống Windows"""
-    candidates = [
-        "arialbd.ttf" if bold else "arial.ttf",
-        "segoeuib.ttf" if bold else "segoeui.ttf",
-        "calibrib.ttf" if bold else "calibri.ttf",
-    ]
-    windows_fonts_dir = r"C:\Windows\Fonts"
-    for name in candidates:
-        path = os.path.join(windows_fonts_dir, name)
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except Exception:
-                continue
-    return ImageFont.load_default()
+def build_diagram_html(steps):
+    """Tạo HTML/CSS đẹp cho sơ đồ Input -> Process -> Output, dựa trên nội dung AI tóm tắt"""
+    title = html.escape(steps["title"])
+    input_text = html.escape(steps["input"])
+    process_text = html.escape(steps["process"])
+    output_text = html.escape(steps["output"])
 
-def draw_explainer_diagram(steps):
-    """Vẽ sơ đồ Input -> Process -> Output bằng Pillow, dựa trên nội dung do AI tóm tắt"""
-    print("Đang vẽ sơ đồ minh họa cách hoạt động...", flush=True)
+    return f"""<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  html, body {{
+    width: 1200px;
+    height: 675px;
+    font-family: 'Segoe UI', 'Noto Sans', Arial, sans-serif;
+    background: linear-gradient(135deg, #0f2027 0%, #203a43 45%, #2c5364 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }}
+  .title {{
+    color: #ffffff;
+    font-size: 42px;
+    font-weight: 700;
+    text-align: center;
+    max-width: 1000px;
+    margin-bottom: 60px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  }}
+  .flow {{
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }}
+  .card {{
+    width: 300px;
+    min-height: 240px;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 24px;
+    padding: 32px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+    position: relative;
+  }}
+  .badge {{
+    position: absolute;
+    top: -22px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: white;
+    font-weight: 700;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(0, 114, 255, 0.5);
+  }}
+  .icon {{
+    font-size: 48px;
+    margin: 18px 0 10px;
+  }}
+  .label {{
+    color: #0072ff;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+  }}
+  .content {{
+    color: #1a2b3c;
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.35;
+  }}
+  .arrow {{
+    color: #ffffff;
+    font-size: 46px;
+    opacity: 0.85;
+  }}
+</style>
+</head>
+<body>
+  <div class="title">{title}</div>
+  <div class="flow">
+    <div class="card">
+      <div class="badge">1</div>
+      <div class="icon">📥</div>
+      <div class="label">INPUT</div>
+      <div class="content">{input_text}</div>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="card">
+      <div class="badge">2</div>
+      <div class="icon">⚙️</div>
+      <div class="label">PROCESS</div>
+      <div class="content">{process_text}</div>
+    </div>
+    <div class="arrow">&#8594;</div>
+    <div class="card">
+      <div class="badge">3</div>
+      <div class="icon">📤</div>
+      <div class="label">OUTPUT</div>
+      <div class="content">{output_text}</div>
+    </div>
+  </div>
+</body>
+</html>"""
 
-    width, height = 1200, 675
-    bg_color = (255, 255, 255)
-    accent_color = (13, 71, 161)      # xanh đậm
-    box_fill = (227, 242, 253)        # xanh nhạt
-    box_outline = (13, 71, 161)
-    text_color = (13, 71, 161)
-    arrow_color = (66, 66, 66)
+def render_diagram_image(steps):
+    """Render sơ đồ HTML/CSS thành ảnh PNG bằng Playwright (Chromium headless)"""
+    print("Đang render sơ đồ minh họa bằng Playwright...", flush=True)
 
-    image = Image.new("RGB", (width, height), bg_color)
-    draw = ImageDraw.Draw(image)
-
-    title_font = _load_font(40, bold=True)
-    label_font = _load_font(26, bold=True)
-    content_font = _load_font(24)
-
-    # Tiêu đề trên cùng
-    title_text = steps["title"]
-    title_bbox = draw.textbbox((0, 0), title_text, font=title_font)
-    title_w = title_bbox[2] - title_bbox[0]
-    draw.text(((width - title_w) / 2, 40), title_text, fill=accent_color, font=title_font)
-
-    # 3 hộp: Input / Process / Output
-    box_w, box_h = 320, 220
-    gap = 70
-    total_w = box_w * 3 + gap * 2
-    start_x = (width - total_w) / 2
-    box_y = 260
-
-    labels = ["INPUT", "PROCESS", "OUTPUT"]
-    contents = [steps["input"], steps["process"], steps["output"]]
-
-    box_positions = []
-    for i in range(3):
-        x0 = start_x + i * (box_w + gap)
-        y0 = box_y
-        x1 = x0 + box_w
-        y1 = y0 + box_h
-        box_positions.append((x0, y0, x1, y1))
-
-        draw.rounded_rectangle([x0, y0, x1, y1], radius=20, fill=box_fill, outline=box_outline, width=3)
-
-        # Nhãn (INPUT/PROCESS/OUTPUT)
-        label_bbox = draw.textbbox((0, 0), labels[i], font=label_font)
-        label_w = label_bbox[2] - label_bbox[0]
-        draw.text((x0 + (box_w - label_w) / 2, y0 + 20), labels[i], fill=accent_color, font=label_font)
-
-        # Nội dung do AI tóm tắt, tự động xuống dòng nếu dài
-        wrapped = _wrap_text(contents[i], content_font, box_w - 40, draw)
-        line_height = 32
-        total_text_h = len(wrapped) * line_height
-        text_start_y = y0 + (box_h - total_text_h) / 2 + 20
-        for j, line in enumerate(wrapped):
-            line_bbox = draw.textbbox((0, 0), line, font=content_font)
-            line_w = line_bbox[2] - line_bbox[0]
-            draw.text((x0 + (box_w - line_w) / 2, text_start_y + j * line_height), line, fill=text_color, font=content_font)
-
-    # Vẽ mũi tên nối giữa các hộp
-    for i in range(2):
-        x_start = box_positions[i][2]
-        x_end = box_positions[i + 1][0]
-        y_mid = box_y + box_h / 2
-        draw.line([(x_start + 10, y_mid), (x_end - 20, y_mid)], fill=arrow_color, width=4)
-        draw.polygon(
-            [(x_end - 20, y_mid - 12), (x_end - 20, y_mid + 12), (x_end, y_mid)],
-            fill=arrow_color
-        )
-
-    return image
-
-def _wrap_text(text, font, max_width, draw):
-    """Tự động ngắt dòng để chữ không bị tràn khỏi hộp"""
-    words = text.split()
-    lines = []
-    current_line = ""
-    for word in words:
-        test_line = f"{current_line} {word}".strip()
-        bbox = draw.textbbox((0, 0), test_line, font=font)
-        if bbox[2] - bbox[0] <= max_width:
-            current_line = test_line
-        else:
-            if current_line:
-                lines.append(current_line)
-            current_line = word
-    if current_line:
-        lines.append(current_line)
-    return lines if lines else [text]
-
-def save_image_to_file(image):
-    """Lưu ảnh sơ đồ minh họa vào thư mục posts/ cùng ngày với bài viết"""
     os.makedirs("posts", exist_ok=True)
     today_str = datetime.datetime.now().strftime("%Y-%m-%d")
     filename = f"posts/{today_str}.png"
 
-    image.save(filename)
+    html_content = build_diagram_html(steps)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 675})
+        page.set_content(html_content)
+        page.screenshot(path=filename)
+        browser.close()
+
     print(f"Đã lưu ảnh minh họa vào file: {filename}", flush=True)
     return filename
 
@@ -354,12 +374,11 @@ def main():
         # Bước 3: Lưu thành file markdown
         save_post_to_file(post_content)
 
-        # Bước 3b: Tóm tắt sơ đồ Input -> Process -> Output và tự vẽ bằng Pillow
+        # Bước 3b: Tóm tắt sơ đồ Input -> Process -> Output và render bằng Playwright (HTML/CSS)
         image_path = None
         try:
             diagram_steps = generate_diagram_steps(paper_info)
-            diagram_image = draw_explainer_diagram(diagram_steps)
-            image_path = save_image_to_file(diagram_image)
+            image_path = render_diagram_image(diagram_steps)
         except Exception as e:
             print(f"Bỏ qua bước tạo sơ đồ minh họa do lỗi: {e}", flush=True)
 
