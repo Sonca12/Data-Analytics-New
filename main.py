@@ -1,5 +1,6 @@
 import os
 import datetime
+import time
 import json
 import html
 import urllib.request
@@ -19,6 +20,21 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 TEST_MODE = os.getenv("TEST_MODE", "true").lower() == "true"
+
+def call_gemini_with_retry(model, prompt, max_retries=3):
+    """Gọi Gemini API với retry tự động khi gặp lỗi 429 (rate limit)"""
+    wait_times = [30, 60, 120]  # giây chờ mỗi lần retry
+    for attempt in range(max_retries + 1):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str and attempt < max_retries:
+                wait = wait_times[attempt]
+                print(f"⚠️  Quota API tạm thời bị giới hạn. Thử lại sau {wait}s... (lần {attempt+1}/{max_retries})", flush=True)
+                time.sleep(wait)
+            else:
+                raise
 
 def fetch_latest_arxiv_paper():
     """Lấy bài báo mới nhất về Data Analytics từ Arxiv"""
@@ -45,7 +61,7 @@ def generate_linkedin_post(paper_info):
     """Dùng Gemini AI để viết bài đăng LinkedIn"""
     print("Đang nhờ Gemini AI phân tích và viết bài...", flush=True)
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-3.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
     
     prompt = f"""Bạn là một chuyên gia Data Analyst đang xây dựng thương hiệu cá nhân trên LinkedIn.
 Hãy đọc tóm tắt bài báo khoa học dưới đây và viết một bài đăng LinkedIn bằng tiếng Việt thật chuyên nghiệp, cuốn hút và dễ hiểu.
@@ -65,14 +81,14 @@ Yêu cầu cấu trúc bài viết:
 
 Lưu ý: Chỉ trả về nội dung bài viết, không cần thêm các câu mào đầu như "Dưới đây là bài viết...".
 """
-    response = model.generate_content(prompt)
+    response = call_gemini_with_retry(model, prompt)
     return response.text.strip()
 
 def generate_infographic_html(paper_info):
     """Dùng Gemini AI để tạo toàn bộ HTML/CSS infographic đẹp, chi tiết, sát nội dung bài báo"""
     print("Đang nhờ Gemini AI thiết kế infographic HTML/CSS...", flush=True)
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-3.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
 
     prompt = f"""Bạn là một UI designer chuyên tạo infographic đẹp cho mạng xã hội.
 Hãy tạo một file HTML/CSS hoàn chỉnh (1200x675px) làm ảnh bìa LinkedIn cho bài báo khoa học dưới đây.
@@ -103,7 +119,7 @@ Quan trọng:
 - Nội dung PHẢI cụ thể, sát với bài báo được cung cấp, KHÔNG dùng nội dung mẫu/placeholder.
 """
     try:
-        response = model.generate_content(prompt)
+        response = call_gemini_with_retry(model, prompt)
         html_text = response.text.strip()
         # Loại bỏ markdown code fence nếu Gemini vẫn thêm vào
         if html_text.startswith("```"):
