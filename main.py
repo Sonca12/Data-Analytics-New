@@ -93,56 +93,113 @@ def generate_infographic_html(paper_info):
     """Dùng Groq AI (LLaMA 3.3 70B) để tạo infographic dạng sơ đồ kiến trúc đẹp, sát nội dung bài báo"""
     print("Đang nhờ Groq AI thiết kế architecture diagram...", flush=True)
     today = datetime.datetime.now().strftime("%d/%m/%Y")
+    arxiv_id = paper_info['link'].split('/')[-1]
 
-    prompt = f"""Bạn là một UI/UX designer chuyên tạo research infographic và architecture diagram cho mạng xã hội khoa học.
-Hãy tạo một file HTML/CSS/SVG hoàn chỉnh (1200x675px) minh họa kiến trúc/pipeline/sơ đồ logic của bài báo khoa học dưới đây.
+    prompt = f"""Bạn là UI/UX designer. Điền nội dung từ bài báo vào skeleton HTML sau rồi trả về file HTML hoàn chỉnh.
 
 Thông tin bài báo:
 - Tiêu đề: {paper_info['title']}
 - Tác giả: {paper_info['authors']}
 - Tóm tắt: {paper_info['abstract']}
 
-== YÊU CẦU BỐ CỤC (3 CỘT) ==
+SKELETON HTML (điền vào các [PLACEHOLDER], giữ nguyên CSS):
 
-[CỘT TRÁI - 280px] PAPER INFO PANEL:
-  • Badge "RESEARCH INSIGHT" màu gradient nổi bật góc trên
-  • Tên lĩnh vực (Computer Vision / NLP / Data Analytics / Robotics...)
-  • Tiêu đề bài báo rút gọn (tối đa 10 từ), font lớn, bold, màu trắng
-  • Tên tác giả đầu tiên + "et al." nếu nhiều người
-  • Divider line
-  • 3-4 KEY FINDINGS dạng bullet ✦ với nội dung CỤ THỂ từ abstract
-  • Footer: "arxiv.org · {today}"
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+*{{margin:0;padding:0;box-sizing:border-box;}}
+html,body{{width:1200px;height:675px;overflow:hidden;font-family:'Inter',sans-serif;
+  background:linear-gradient(135deg,[BG1] 0%,[BG2] 50%,[BG3] 100%);}}
+.wrap{{display:flex;width:1200px;height:675px;padding:18px;gap:14px;align-items:stretch;}}
+.left{{width:255px;flex-shrink:0;background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.13);border-radius:16px;padding:18px;
+  display:flex;flex-direction:column;gap:8px;}}
+.badge{{display:inline-block;background:linear-gradient(90deg,#f72585,#7209b7);color:#fff;
+  font-size:9px;font-weight:700;letter-spacing:1.5px;padding:4px 10px;border-radius:20px;}}
+.field{{font-size:10px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:1px;text-transform:uppercase;}}
+.ptitle{{font-size:17px;font-weight:800;color:#fff;line-height:1.3;}}
+.auth{{font-size:11px;color:rgba(255,255,255,0.55);}}
+.hr{{height:1px;background:rgba(255,255,255,0.13);margin:2px 0;}}
+.finds{{display:flex;flex-direction:column;gap:5px;flex:1;overflow:hidden;}}
+.find{{font-size:10.5px;color:rgba(255,255,255,0.85);line-height:1.4;}}
+.foot{{font-size:9.5px;color:rgba(255,255,255,0.35);margin-top:auto;}}
+.mid{{flex:1;background:rgba(255,255,255,0.05);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:16px 12px;
+  display:flex;flex-direction:column;}}
+.dtitle{{font-size:12px;font-weight:700;color:rgba(255,255,255,0.6);letter-spacing:1px;
+  text-transform:uppercase;text-align:center;margin-bottom:10px;}}
+.pipeline{{display:flex;align-items:center;justify-content:center;flex:1;gap:4px;padding:0 4px;}}
+.node{{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:118px;height:148px;border-radius:14px;padding:10px 8px;text-align:center;flex-shrink:0;}}
+.ni{{font-size:28px;margin-bottom:5px;}}
+.nl{{font-size:11.5px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:3px;}}
+.nd{{font-size:9.5px;color:rgba(255,255,255,0.82);line-height:1.3;}}
+.n1{{background:linear-gradient(135deg,#00b09b,#96c93d);}}
+.n2{{background:linear-gradient(135deg,#4776e6,#8e54e9);}}
+.n3{{background:linear-gradient(135deg,#7209b7,#3a0ca3);}}
+.n4{{background:linear-gradient(135deg,#3a0ca3,#4361ee);}}
+.n5{{background:linear-gradient(135deg,#f7971e,#ffd200);}}
+.arr{{font-size:22px;color:rgba(255,255,255,0.45);flex-shrink:0;}}
+.dfoot{{font-size:9px;color:rgba(255,255,255,0.3);text-align:center;margin-top:8px;}}
+.right{{width:232px;flex-shrink:0;background:rgba(255,255,255,0.07);backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,0.13);border-radius:16px;padding:18px;
+  display:flex;flex-direction:column;gap:10px;}}
+.mtitle{{font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:1px;text-transform:uppercase;}}
+.mcard{{background:rgba(255,255,255,0.09);border-radius:10px;padding:10px 12px;}}
+.mnum{{font-size:24px;font-weight:800;color:#fff;}}
+.mlbl{{font-size:10px;color:rgba(255,255,255,0.55);margin-top:1px;}}
+.tags{{display:flex;flex-direction:column;gap:5px;margin-top:auto;}}
+.tag{{padding:5px 10px;border-radius:20px;font-size:10.5px;font-weight:600;color:#fff;text-align:center;}}
+</style></head>
+<body><div class="wrap">
+<div class="left">
+  <div class="badge">RESEARCH INSIGHT</div>
+  <div class="field">[LĨNH VỰC: Robotics / Computer Vision / NLP / ...]</div>
+  <div class="ptitle">[TIÊU ĐỀ RÚT GỌN ≤10 TỪ]</div>
+  <div class="auth">[TÁC GIẢ ĐẦU] et al.</div>
+  <div class="hr"></div>
+  <div class="finds">
+    <div class="find">✦ [KEY FINDING 1 — cụ thể từ abstract]</div>
+    <div class="find">✦ [KEY FINDING 2 — cụ thể từ abstract]</div>
+    <div class="find">✦ [KEY FINDING 3 — cụ thể từ abstract]</div>
+    <div class="find">✦ [KEY FINDING 4 — cụ thể từ abstract]</div>
+  </div>
+  <div class="foot">arxiv.org · {today}</div>
+</div>
+<div class="mid">
+  <div class="dtitle">🔬 [TÊN DIAGRAM PHÙ HỢP VỚI BÀI BÁO]</div>
+  <div class="pipeline">
+    <div class="node n1"><div class="ni">[🔢]</div><div class="nl">[NODE 1 TÊN]</div><div class="nd">[mô tả 3-5 từ]</div></div>
+    <div class="arr">➤</div>
+    <div class="node n2"><div class="ni">[🔢]</div><div class="nl">[NODE 2 TÊN]</div><div class="nd">[mô tả 3-5 từ]</div></div>
+    <div class="arr">➤</div>
+    <div class="node n3"><div class="ni">[🔢]</div><div class="nl">[NODE 3 TÊN]</div><div class="nd">[mô tả 3-5 từ]</div></div>
+    <div class="arr">➤</div>
+    <div class="node n4"><div class="ni">[🔢]</div><div class="nl">[NODE 4 TÊN]</div><div class="nd">[mô tả 3-5 từ]</div></div>
+    <div class="arr">➤</div>
+    <div class="node n5"><div class="ni">[🔢]</div><div class="nl">[NODE 5 TÊN]</div><div class="nd">[mô tả 3-5 từ]</div></div>
+  </div>
+  <div class="dfoot">Source: arxiv.org/{arxiv_id}</div>
+</div>
+<div class="right">
+  <div class="mtitle">Key Metrics</div>
+  <div class="mcard"><div class="mnum">[SỐ LIỆU 1]</div><div class="mlbl">[Mô tả]</div></div>
+  <div class="mcard"><div class="mnum">[SỐ LIỆU 2]</div><div class="mlbl">[Mô tả]</div></div>
+  <div class="tags">
+    <div class="tag" style="background:linear-gradient(90deg,#f72585,#b5179e);">#[TAG1]</div>
+    <div class="tag" style="background:linear-gradient(90deg,#7209b7,#4361ee);">#[TAG2]</div>
+    <div class="tag" style="background:linear-gradient(90deg,#4361ee,#4cc9f0);">#[TAG3]</div>
+    <div class="tag" style="background:linear-gradient(90deg,#f7971e,#ffd200);color:#222;">#[TAG4]</div>
+  </div>
+</div>
+</div></body></html>
 
-[CỘT GIỮA - 640px] ARCHITECTURE DIAGRAM (phần quan trọng nhất):
-  Đây phải là một SƠ ĐỒ TRỰC QUAN thật sự với các node hộp nối nhau bằng mũi tên.
-  Dựa vào abstract, phân tích pipeline/kiến trúc của phương pháp và vẽ:
-  • 3-6 NODE dạng hộp bo tròn (rounded rectangle), mỗi node có: icon emoji + tên giai đoạn + mô tả ngắn
-  • Mũi tên SVG (<line> + <marker arrowhead>) nối các node lại
-  • Layout ngang (left→right) hoặc dọc (top→bottom) tùy pipeline
-  • Màu node khác nhau: INPUT=xanh lá gradient, PROCESS=xanh tím gradient, OUTPUT=cam vàng gradient
-  • Tiêu đề sơ đồ: "Pipeline Overview" hoặc "System Architecture"
-  • Có thể dùng CSS flexbox/grid để bố trí các node + SVG overlay cho mũi tên
-
-[CỘT PHẢI - 280px] METRICS & TAGS PANEL:
-  • Tiêu đề "KEY METRICS" hoặc "CONTRIBUTIONS"
-  • 2-3 metric dạng số lớn hoặc contribution card (lấy từ abstract nếu có số liệu)
-  • 4-5 KEYWORD TAGS dạng pill/badge màu sắc
-  • Icon visual nhỏ
-
-== YÊU CẦU KỸ THUẬT ==
-1. Kích thước: html,body width=1200px height=675px overflow=hidden tuyệt đối.
-2. Nền: dark gradient đẹp phù hợp chủ đề (dark navy, dark purple, dark teal...).
-3. Font: @import Google Fonts 'Inter' hoặc 'Space Grotesk'.
-4. Glassmorphism: background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15).
-5. Tất cả text phải READABLE, contrast đủ cao, font-size tối thiểu 11px.
-6. Sử dụng position: absolute hoặc flexbox để layout chính xác, KHÔNG overflow.
-
-== QUY TẮC BẮT BUỘC ==
-- Chỉ trả về CODE HTML thuần túy bắt đầu <!DOCTYPE html> kết thúc </html>.
-- KHÔNG thêm ```html, KHÔNG giải thích, KHÔNG comment ngoài code HTML.
-- Nội dung node/text PHẢI lấy từ bài báo thực — KHÔNG dùng "Input Data", "Process", "Output" chung chung.
-- Diagram PHẢI phản ánh đúng logic/pipeline của phương pháp được mô tả trong abstract.
-- Diagram của cột giữa: dùng display:flex, flex-direction:row, align-items:center, các node là div bo tròn, giữa các node là ➡️.
+Hướng dẫn điền:
+- [BG1],[BG2],[BG3]: 3 màu hex tối phù hợp chủ đề bài báo (VD robotics: #0d0221,#0a1628,#0f2557)
+- [NODE x TÊN]: tên CỤ THỂ từ pipeline/framework của bài báo (không dùng "Input","Process","Output")
+- [SỐ LIỆU]: số/thống kê từ abstract. Nếu không có số → dùng từ ngắn như "5 Sources","6 Challenges"
+- Trả về HTML hoàn chỉnh duy nhất, không giải thích thêm.
 """
     try:
         html_text = call_groq(prompt, max_tokens=8192)
@@ -153,7 +210,6 @@ Thông tin bài báo:
         return html_text
     except Exception as e:
         print(f"Lỗi khi tạo infographic HTML: {e}", flush=True)
-        # Fallback: trả về HTML đơn giản
         title = html.escape(paper_info['title'][:80])
         return f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
