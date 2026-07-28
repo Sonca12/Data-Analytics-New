@@ -68,49 +68,92 @@ Lưu ý: Chỉ trả về nội dung bài viết, không cần thêm các câu m
     response = model.generate_content(prompt)
     return response.text.strip()
 
-def generate_diagram_steps(paper_info):
-    """Dùng Gemini AI để tóm tắt bài báo thành 3 bước ngắn: Input -> Process -> Output"""
-    print("Đang nhờ Gemini AI tóm tắt sơ đồ hoạt động...", flush=True)
+def generate_infographic_html(paper_info):
+    """Dùng Gemini AI để tạo toàn bộ HTML/CSS infographic đẹp, chi tiết, sát nội dung bài báo"""
+    print("Đang nhờ Gemini AI thiết kế infographic HTML/CSS...", flush=True)
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(
-        'gemini-3.5-flash',
-        generation_config={"response_mime_type": "application/json"}
-    )
+    model = genai.GenerativeModel('gemini-3.5-flash')
 
-    prompt = f"""Dựa vào tóm tắt bài báo khoa học dưới đây, hãy tóm tắt cách hoạt động của
-phương pháp/hệ thống được nói đến thành 3 bước ngắn theo mô hình Input -> Process -> Output.
+    prompt = f"""Bạn là một UI designer chuyên tạo infographic đẹp cho mạng xã hội.
+Hãy tạo một file HTML/CSS hoàn chỉnh (1200x675px) làm ảnh bìa LinkedIn cho bài báo khoa học dưới đây.
 
-Tiêu đề: {paper_info['title']}
-Tóm tắt (Abstract): {paper_info['abstract']}
+Thông tin bài báo:
+- Tiêu đề: {paper_info['title']}
+- Tác giả: {paper_info['authors']}
+- Tóm tắt: {paper_info['abstract']}
 
-Yêu cầu:
-- Mỗi bước chỉ 2-5 từ ngắn gọn, bằng tiếng Việt, không dùng dấu ngoặc hay dấu câu thừa.
-- Trả về đúng định dạng JSON với 4 khóa: "title", "input", "process", "output".
-- "title" là tên ngắn gọn (dưới 6 từ) mô tả chủ đề chính của nghiên cứu.
+Yêu cầu THIẾT KẾ (quan trọng):
+1. Kích thước cố định: width=1200px, height=675px, overflow=hidden, không scroll.
+2. Màu sắc: Tạo palette màu gradient đẹp PHÙ HỢP với chủ đề nghiên cứu (ví dụ: Computer Vision → tím/xanh đậm, NLP → cam/vàng, Finance → xanh lá/vàng gold, Healthcare → xanh lam/trắng...).
+3. Font: Sử dụng Google Fonts (Inter hoặc Outfit) import qua @import.
+4. Layout PHẢI bao gồm đủ các thành phần sau:
+   a. HEADER: Logo/badge "RESEARCH INSIGHT" + tên lĩnh vực nghiên cứu (ví dụ: "Computer Vision" / "NLP" / "Data Analytics")
+   b. TIÊU ĐỀ CHÍNH: Tên bài báo (rút gọn nếu quá dài, tối đa 12 từ), font lớn, nổi bật
+   c. TÁC GIẢ: Hiển thị tên tác giả (rút gọn nếu nhiều)
+   d. KEY FINDINGS: 3-4 bullet points tóm tắt phát hiện/đóng góp chính của bài báo (trích từ abstract, bằng tiếng Anh hoặc tiếng Việt đều được)
+   e. METHODOLOGY FLOW: Sơ đồ 3 bước (Input → Process → Output) nhưng với nội dung CHI TIẾT và CỤ THỂ từ bài báo (không dùng placeholder chung chung)
+   f. KEYWORD TAGS: 4-5 tag từ khóa liên quan (ví dụ: #DeepLearning #CV #Benchmark)
+   g. FOOTER: "Source: arxiv.org" + ngày hiện tại
+5. Hiệu ứng: Glassmorphism, gradient nền, box-shadow, border-radius bo tròn đẹp.
+6. Đảm bảo tất cả text KHÔNG bị tràn ra ngoài khung 1200x675px.
 
-Ví dụ định dạng:
-{{"title": "Dự đoán giá nhà", "input": "Dữ liệu bất động sản", "process": "Mô hình học máy", "output": "Giá dự đoán"}}
+Quan trọng:
+- Chỉ trả về CODE HTML thuần túy, bắt đầu bằng <!DOCTYPE html> và kết thúc bằng </html>.
+- KHÔNG thêm markdown, KHÔNG thêm giải thích, KHÔNG dùng ```html wrapper.
+- Nội dung PHẢI cụ thể, sát với bài báo được cung cấp, KHÔNG dùng nội dung mẫu/placeholder.
 """
     try:
         response = model.generate_content(prompt)
-        data = json.loads(response.text)
-        return {
-            "title": data.get("title", paper_info["title"][:40]),
-            "input": data.get("input", "Dữ liệu đầu vào"),
-            "process": data.get("process", "Xử lý / Mô hình"),
-            "output": data.get("output", "Kết quả đầu ra"),
-        }
+        html_text = response.text.strip()
+        # Loại bỏ markdown code fence nếu Gemini vẫn thêm vào
+        if html_text.startswith("```"):
+            lines = html_text.split("\n")
+            html_text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+        return html_text
     except Exception as e:
-        print(f"Không thể tóm tắt sơ đồ bằng AI, dùng giá trị mặc định: {e}", flush=True)
-        return {
-            "title": paper_info["title"][:40],
-            "input": "Dữ liệu đầu vào",
-            "process": "Xử lý / Mô hình",
-            "output": "Kết quả đầu ra",
-        }
+        print(f"Lỗi khi tạo infographic HTML: {e}", flush=True)
+        # Fallback: trả về HTML đơn giản
+        title = html.escape(paper_info['title'][:80])
+        return f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  body {{ width:1200px; height:675px; margin:0; background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          font-family:Arial,sans-serif; color:white; overflow:hidden; }}
+  h1 {{ font-size:36px; text-align:center; max-width:900px; }}
+  p {{ font-size:20px; opacity:0.7; }}
+</style></head>
+<body>
+  <h1>{title}</h1>
+  <p>Data Analytics Research Insight</p>
+</body></html>"""
 
-def build_diagram_html(steps):
-    """Tạo HTML/CSS đẹp cho sơ đồ Input -> Process -> Output, dựa trên nội dung AI tóm tắt"""
+def render_diagram_image(paper_info):
+    """Render infographic HTML/CSS thành ảnh PNG bằng Playwright (Chromium headless)"""
+    print("Đang render infographic minh họa bằng Playwright...", flush=True)
+
+    os.makedirs("posts", exist_ok=True)
+    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+    filename = f"posts/{today_str}.png"
+
+    html_content = generate_infographic_html(paper_info)
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(viewport={"width": 1200, "height": 675})
+        page.set_content(html_content, wait_until="networkidle")  # chờ Google Fonts load
+        page.screenshot(path=filename)
+        browser.close()
+
+    print(f"Đã lưu ảnh infographic vào file: {filename}", flush=True)
+    return filename
+
+
+# ═══════════════════════════════════════════════════════════════
+# LEGACY: đoạn HTML template cũ được giữ lại phòng khi cần debug
+# ═══════════════════════════════════════════════════════════════
+def _legacy_build_diagram_html(steps):
+    """[LEGACY] Template HTML/CSS cũ cho sơ đồ Input -> Process -> Output"""
     title = html.escape(steps["title"])
     input_text = html.escape(steps["input"])
     process_text = html.escape(steps["process"])
@@ -226,25 +269,7 @@ def build_diagram_html(steps):
 </body>
 </html>"""
 
-def render_diagram_image(steps):
-    """Render sơ đồ HTML/CSS thành ảnh PNG bằng Playwright (Chromium headless)"""
-    print("Đang render sơ đồ minh họa bằng Playwright...", flush=True)
 
-    os.makedirs("posts", exist_ok=True)
-    today_str = datetime.datetime.now().strftime("%Y-%m-%d")
-    filename = f"posts/{today_str}.png"
-
-    html_content = build_diagram_html(steps)
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1200, "height": 675})
-        page.set_content(html_content)
-        page.screenshot(path=filename)
-        browser.close()
-
-    print(f"Đã lưu ảnh minh họa vào file: {filename}", flush=True)
-    return filename
 
 def post_to_linkedin(content, image_path=None):
     """Đăng bài lên LinkedIn qua API"""
@@ -374,13 +399,12 @@ def main():
         # Bước 3: Lưu thành file markdown
         save_post_to_file(post_content)
 
-        # Bước 3b: Tóm tắt sơ đồ Input -> Process -> Output và render bằng Playwright (HTML/CSS)
+        # Bước 3b: Gemini thiết kế infographic HTML/CSS và render bằng Playwright
         image_path = None
         try:
-            diagram_steps = generate_diagram_steps(paper_info)
-            image_path = render_diagram_image(diagram_steps)
+            image_path = render_diagram_image(paper_info)
         except Exception as e:
-            print(f"Bỏ qua bước tạo sơ đồ minh họa do lỗi: {e}", flush=True)
+            print(f"Bỏ qua bước tạo infographic minh họa do lỗi: {e}", flush=True)
 
         # Bước 4: Đăng lên LinkedIn (kèm sơ đồ minh họa nếu có)
         post_to_linkedin(post_content, image_path=image_path)
