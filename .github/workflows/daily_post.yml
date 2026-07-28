@@ -31,7 +31,7 @@ jobs:
 
       - name: Run script to fetch, generate and post
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           TEST_MODE: "false" # Chạy thật khi ở trên GitHub Actions
         run: python main.py

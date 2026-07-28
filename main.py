@@ -6,7 +6,7 @@ import html
 import urllib.request
 import feedparser
 import requests
-import google.generativeai as genai
+from groq import Groq
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 import sys
@@ -17,21 +17,28 @@ sys.stdout.reconfigure(encoding='utf-8')
 # 1. Load biến môi trường
 load_dotenv()
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")  # giữ lại để dự phòng
+GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 TEST_MODE = os.getenv("TEST_MODE", "true").lower() == "true"
 
-def call_gemini_with_retry(model, prompt, max_retries=3):
-    """Gọi Gemini API với retry tự động khi gặp lỗi 429 (rate limit)"""
-    wait_times = [30, 60, 120]  # giây chờ mỗi lần retry
+def call_groq(prompt, max_retries=3):
+    """Gọi Groq API (LLaMA 3.3 70B) với retry tự động khi gặp lỗi rate limit"""
+    client = Groq(api_key=GROQ_API_KEY)
+    wait_times = [15, 30, 60]
     for attempt in range(max_retries + 1):
         try:
-            return model.generate_content(prompt)
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+            )
+            return completion.choices[0].message.content.strip()
         except Exception as e:
             err_str = str(e)
-            if "429" in err_str and attempt < max_retries:
+            if ("429" in err_str or "rate_limit" in err_str.lower()) and attempt < max_retries:
                 wait = wait_times[attempt]
-                print(f"⚠️  Quota API tạm thời bị giới hạn. Thử lại sau {wait}s... (lần {attempt+1}/{max_retries})", flush=True)
+                print(f"⚠️  Rate limit Groq. Thử lại sau {wait}s... (lần {attempt+1}/{max_retries})", flush=True)
                 time.sleep(wait)
             else:
                 raise
@@ -58,11 +65,9 @@ def fetch_latest_arxiv_paper():
     }
 
 def generate_linkedin_post(paper_info):
-    """Dùng Gemini AI để viết bài đăng LinkedIn"""
-    print("Đang nhờ Gemini AI phân tích và viết bài...", flush=True)
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash')
-    
+    """Dùng Groq AI (LLaMA 3.3 70B) để viết bài đăng LinkedIn"""
+    print("Đang nhờ Groq AI phân tích và viết bài...", flush=True)
+
     prompt = f"""Bạn là một chuyên gia Data Analyst đang xây dựng thương hiệu cá nhân trên LinkedIn.
 Hãy đọc tóm tắt bài báo khoa học dưới đây và viết một bài đăng LinkedIn bằng tiếng Việt thật chuyên nghiệp, cuốn hút và dễ hiểu.
 
@@ -81,14 +86,11 @@ Yêu cầu cấu trúc bài viết:
 
 Lưu ý: Chỉ trả về nội dung bài viết, không cần thêm các câu mào đầu như "Dưới đây là bài viết...".
 """
-    response = call_gemini_with_retry(model, prompt)
-    return response.text.strip()
+    return call_groq(prompt)
 
 def generate_infographic_html(paper_info):
-    """Dùng Gemini AI để tạo toàn bộ HTML/CSS infographic đẹp, chi tiết, sát nội dung bài báo"""
-    print("Đang nhờ Gemini AI thiết kế infographic HTML/CSS...", flush=True)
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    """Dùng Groq AI (LLaMA 3.3 70B) để tạo toàn bộ HTML/CSS infographic đẹp, chi tiết, sát nội dung bài báo"""
+    print("Đang nhờ Groq AI thiết kế infographic HTML/CSS...", flush=True)
 
     prompt = f"""Bạn là một UI designer chuyên tạo infographic đẹp cho mạng xã hội.
 Hãy tạo một file HTML/CSS hoàn chỉnh (1200x675px) làm ảnh bìa LinkedIn cho bài báo khoa học dưới đây.
@@ -119,9 +121,8 @@ Quan trọng:
 - Nội dung PHẢI cụ thể, sát với bài báo được cung cấp, KHÔNG dùng nội dung mẫu/placeholder.
 """
     try:
-        response = call_gemini_with_retry(model, prompt)
-        html_text = response.text.strip()
-        # Loại bỏ markdown code fence nếu Gemini vẫn thêm vào
+        html_text = call_groq(prompt)
+        # Loại bỏ markdown code fence nếu model vẫn thêm vào
         if html_text.startswith("```"):
             lines = html_text.split("\n")
             html_text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
