@@ -89,36 +89,59 @@ Lưu ý: Chỉ trả về nội dung bài viết, không cần thêm các câu m
     return call_groq(prompt)
 
 def generate_infographic_html(paper_info):
-    """Dùng Groq AI (LLaMA 3.3 70B) để tạo toàn bộ HTML/CSS infographic đẹp, chi tiết, sát nội dung bài báo"""
-    print("Đang nhờ Groq AI thiết kế infographic HTML/CSS...", flush=True)
+    """Dùng Groq AI (LLaMA 3.3 70B) để tạo infographic dạng sơ đồ kiến trúc đẹp, sát nội dung bài báo"""
+    print("Đang nhờ Groq AI thiết kế architecture diagram...", flush=True)
+    today = datetime.datetime.now().strftime("%d/%m/%Y")
 
-    prompt = f"""Bạn là một UI designer chuyên tạo infographic đẹp cho mạng xã hội.
-Hãy tạo một file HTML/CSS hoàn chỉnh (1200x675px) làm ảnh bìa LinkedIn cho bài báo khoa học dưới đây.
+    prompt = f"""Bạn là một UI/UX designer chuyên tạo research infographic và architecture diagram cho mạng xã hội khoa học.
+Hãy tạo một file HTML/CSS/SVG hoàn chỉnh (1200x675px) minh họa kiến trúc/pipeline/sơ đồ logic của bài báo khoa học dưới đây.
 
 Thông tin bài báo:
 - Tiêu đề: {paper_info['title']}
 - Tác giả: {paper_info['authors']}
 - Tóm tắt: {paper_info['abstract']}
 
-Yêu cầu THIẾT KẾ (quan trọng):
-1. Kích thước cố định: width=1200px, height=675px, overflow=hidden, không scroll.
-2. Màu sắc: Tạo palette màu gradient đẹp PHÙ HỢP với chủ đề nghiên cứu (ví dụ: Computer Vision → tím/xanh đậm, NLP → cam/vàng, Finance → xanh lá/vàng gold, Healthcare → xanh lam/trắng...).
-3. Font: Sử dụng Google Fonts (Inter hoặc Outfit) import qua @import.
-4. Layout PHẢI bao gồm đủ các thành phần sau:
-   a. HEADER: Logo/badge "RESEARCH INSIGHT" + tên lĩnh vực nghiên cứu (ví dụ: "Computer Vision" / "NLP" / "Data Analytics")
-   b. TIÊU ĐỀ CHÍNH: Tên bài báo (rút gọn nếu quá dài, tối đa 12 từ), font lớn, nổi bật
-   c. TÁC GIẢ: Hiển thị tên tác giả (rút gọn nếu nhiều)
-   d. KEY FINDINGS: 3-4 bullet points tóm tắt phát hiện/đóng góp chính của bài báo (trích từ abstract, bằng tiếng Anh hoặc tiếng Việt đều được)
-   e. METHODOLOGY FLOW: Sơ đồ 3 bước (Input → Process → Output) nhưng với nội dung CHI TIẾT và CỤ THỂ từ bài báo (không dùng placeholder chung chung)
-   f. KEYWORD TAGS: 4-5 tag từ khóa liên quan (ví dụ: #DeepLearning #CV #Benchmark)
-   g. FOOTER: "Source: arxiv.org" + ngày hiện tại
-5. Hiệu ứng: Glassmorphism, gradient nền, box-shadow, border-radius bo tròn đẹp.
-6. Đảm bảo tất cả text KHÔNG bị tràn ra ngoài khung 1200x675px.
+== YÊU CẦU BỐ CỤC (3 CỘT) ==
 
-Quan trọng:
-- Chỉ trả về CODE HTML thuần túy, bắt đầu bằng <!DOCTYPE html> và kết thúc bằng </html>.
-- KHÔNG thêm markdown, KHÔNG thêm giải thích, KHÔNG dùng ```html wrapper.
-- Nội dung PHẢI cụ thể, sát với bài báo được cung cấp, KHÔNG dùng nội dung mẫu/placeholder.
+[CỘT TRÁI - 280px] PAPER INFO PANEL:
+  • Badge "RESEARCH INSIGHT" màu gradient nổi bật góc trên
+  • Tên lĩnh vực (Computer Vision / NLP / Data Analytics / Robotics...)
+  • Tiêu đề bài báo rút gọn (tối đa 10 từ), font lớn, bold, màu trắng
+  • Tên tác giả đầu tiên + "et al." nếu nhiều người
+  • Divider line
+  • 3-4 KEY FINDINGS dạng bullet ✦ với nội dung CỤ THỂ từ abstract
+  • Footer: "arxiv.org · {today}"
+
+[CỘT GIỮA - 640px] ARCHITECTURE DIAGRAM (phần quan trọng nhất):
+  Đây phải là một SƠ ĐỒ TRỰC QUAN thật sự với các node hộp nối nhau bằng mũi tên.
+  Dựa vào abstract, phân tích pipeline/kiến trúc của phương pháp và vẽ:
+  • 3-6 NODE dạng hộp bo tròn (rounded rectangle), mỗi node có: icon emoji + tên giai đoạn + mô tả ngắn
+  • Mũi tên SVG (<line> + <marker arrowhead>) nối các node lại
+  • Layout ngang (left→right) hoặc dọc (top→bottom) tùy pipeline
+  • Màu node khác nhau: INPUT=xanh lá gradient, PROCESS=xanh tím gradient, OUTPUT=cam vàng gradient
+  • Tiêu đề sơ đồ: "Pipeline Overview" hoặc "System Architecture"
+  • Có thể dùng CSS flexbox/grid để bố trí các node + SVG overlay cho mũi tên
+
+[CỘT PHẢI - 280px] METRICS & TAGS PANEL:
+  • Tiêu đề "KEY METRICS" hoặc "CONTRIBUTIONS"
+  • 2-3 metric dạng số lớn hoặc contribution card (lấy từ abstract nếu có số liệu)
+  • 4-5 KEYWORD TAGS dạng pill/badge màu sắc
+  • Icon visual nhỏ
+
+== YÊU CẦU KỸ THUẬT ==
+1. Kích thước: html,body width=1200px height=675px overflow=hidden tuyệt đối.
+2. Nền: dark gradient đẹp phù hợp chủ đề (dark navy, dark purple, dark teal...).
+3. Font: @import Google Fonts 'Inter' hoặc 'Space Grotesk'.
+4. Glassmorphism: background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15).
+5. SVG arrows dùng <defs><marker> arrowhead + <line> hoặc <path> để nối các node.
+6. Tất cả text phải READABLE, contrast đủ cao, font-size tối thiểu 11px.
+7. Sử dụng position: absolute hoặc flexbox để layout chính xác, KHÔNG overflow.
+
+== QUY TẮC BẮT BUỘC ==
+- Chỉ trả về CODE HTML thuần túy bắt đầu <!DOCTYPE html> kết thúc </html>.
+- KHÔNG thêm ```html, KHÔNG giải thích, KHÔNG comment ngoài code HTML.
+- Nội dung node/text PHẢI lấy từ bài báo thực — KHÔNG dùng "Input Data", "Process", "Output" chung chung.
+- Diagram PHẢI phản ánh đúng logic/pipeline của phương pháp được mô tả trong abstract.
 """
     try:
         html_text = call_groq(prompt)
