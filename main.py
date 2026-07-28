@@ -22,7 +22,7 @@ GROQ_API_KEY   = os.getenv("GROQ_API_KEY")
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 TEST_MODE = os.getenv("TEST_MODE", "true").lower() == "true"
 
-def call_groq(prompt, max_retries=3):
+def call_groq(prompt, max_retries=3, max_tokens=4096):
     """Gọi Groq API (LLaMA 3.3 70B) với retry tự động khi gặp lỗi rate limit"""
     client = Groq(api_key=GROQ_API_KEY)
     wait_times = [15, 30, 60]
@@ -32,6 +32,7 @@ def call_groq(prompt, max_retries=3):
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
+                max_tokens=max_tokens,
             )
             return completion.choices[0].message.content.strip()
         except Exception as e:
@@ -133,18 +134,18 @@ Thông tin bài báo:
 2. Nền: dark gradient đẹp phù hợp chủ đề (dark navy, dark purple, dark teal...).
 3. Font: @import Google Fonts 'Inter' hoặc 'Space Grotesk'.
 4. Glassmorphism: background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15).
-5. SVG arrows dùng <defs><marker> arrowhead + <line> hoặc <path> để nối các node.
-6. Tất cả text phải READABLE, contrast đủ cao, font-size tối thiểu 11px.
-7. Sử dụng position: absolute hoặc flexbox để layout chính xác, KHÔNG overflow.
+5. Tất cả text phải READABLE, contrast đủ cao, font-size tối thiểu 11px.
+6. Sử dụng position: absolute hoặc flexbox để layout chính xác, KHÔNG overflow.
 
 == QUY TẮC BẮT BUỘC ==
 - Chỉ trả về CODE HTML thuần túy bắt đầu <!DOCTYPE html> kết thúc </html>.
 - KHÔNG thêm ```html, KHÔNG giải thích, KHÔNG comment ngoài code HTML.
 - Nội dung node/text PHẢI lấy từ bài báo thực — KHÔNG dùng "Input Data", "Process", "Output" chung chung.
 - Diagram PHẢI phản ánh đúng logic/pipeline của phương pháp được mô tả trong abstract.
+- Diagram của cột giữa: dùng display:flex, flex-direction:row, align-items:center, các node là div bo tròn, giữa các node là ➡️.
 """
     try:
-        html_text = call_groq(prompt)
+        html_text = call_groq(prompt, max_tokens=8192)
         # Loại bỏ markdown code fence nếu model vẫn thêm vào
         if html_text.startswith("```"):
             lines = html_text.split("\n")
